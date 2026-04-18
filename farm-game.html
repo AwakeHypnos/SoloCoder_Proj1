@@ -1,0 +1,1498 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文字版农场模拟游戏</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #87CEEB 0%, #98FB98 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .main-menu {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #228B22 0%, #32CD32 100%);
+        }
+
+        .game-title {
+            font-size: 48px;
+            color: #FFF;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.3);
+            margin-bottom: 50px;
+        }
+
+        .menu-btn {
+            width: 250px;
+            padding: 15px 30px;
+            margin: 10px;
+            font-size: 18px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .menu-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+        }
+
+        .start-btn {
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            color: #333;
+            font-weight: bold;
+        }
+
+        .load-btn {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: #FFF;
+        }
+
+        .dev-btn {
+            background: linear-gradient(135deg, #2196F3, #1976D2);
+            color: #FFF;
+        }
+
+        .game-screen {
+            display: none;
+        }
+
+        .top-bar {
+            background: linear-gradient(135deg, #8B4513, #A0522D);
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .time-container {
+            margin-bottom: 15px;
+        }
+
+        .time-info {
+            display: flex;
+            justify-content: space-between;
+            color: #FFF;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        .time-progress-container {
+            position: relative;
+            height: 30px;
+            background: #333;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+
+        .time-progress {
+            height: 100%;
+            background: linear-gradient(90deg, #FFD700, #FFA500);
+            transition: width 0.1s linear;
+        }
+
+        .time-labels {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            transform: translateY(-50%);
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            color: #333;
+            font-weight: bold;
+            pointer-events: none;
+        }
+
+        .stats-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .money-display {
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .function-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .func-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .func-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .backpack-btn {
+            background: linear-gradient(135deg, #8B4513, #A0522D);
+            color: #FFF;
+        }
+
+        .merchant-btn {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: #FFF;
+        }
+
+        .market-btn {
+            background: linear-gradient(135deg, #2196F3, #1976D2);
+            color: #FFF;
+        }
+
+        .warehouse-btn {
+            background: linear-gradient(135deg, #9C27B0, #7B1FA2);
+            color: #FFF;
+        }
+
+        .main-area {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 400px;
+            background: rgba(139, 69, 19, 0.3);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .field-container {
+            background: linear-gradient(135deg, #8B4513, #A0522D);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .field-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+        }
+
+        .plot {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #654321, #8B4513);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid #4a3020;
+            position: relative;
+        }
+
+        .plot:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .plot.drag-over {
+            border: 3px dashed #FFD700;
+            background: linear-gradient(135deg, #7a5030, #9a6040);
+        }
+
+        .plot-icon {
+            font-size: 32px;
+            margin-bottom: 5px;
+        }
+
+        .plot-info {
+            font-size: 10px;
+            color: #FFF;
+            text-align: center;
+        }
+
+        .plot-actions {
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-top: 10px;
+            display: none;
+            gap: 5px;
+            z-index: 100;
+        }
+
+        .plot.selected .plot-actions {
+            display: flex;
+        }
+
+        .action-btn {
+            padding: 5px 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .action-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .water-btn {
+            background: linear-gradient(135deg, #2196F3, #1976D2);
+            color: #FFF;
+        }
+
+        .fertilize-btn {
+            background: linear-gradient(135deg, #8BC34A, #689F38);
+            color: #FFF;
+        }
+
+        .harvest-btn {
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            color: #333;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #FFF8DC, #FFFACD);
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #8B4513;
+        }
+
+        .modal-title {
+            font-size: 24px;
+            color: #8B4513;
+            font-weight: bold;
+        }
+
+        .close-btn {
+            background: linear-gradient(135deg, #FF6B6B, #EE5A5A);
+            color: #FFF;
+            border: none;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .close-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .items-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 15px;
+        }
+
+        .item-card {
+            background: #FFF;
+            border: 2px solid #8B4513;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            cursor: grab;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .item-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .item-card.dragging {
+            opacity: 0.5;
+            cursor: grabbing;
+        }
+
+        .item-card.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .item-icon {
+            font-size: 40px;
+            margin-bottom: 10px;
+        }
+
+        .item-name {
+            font-weight: bold;
+            color: #8B4513;
+            margin-bottom: 5px;
+        }
+
+        .item-price {
+            color: #FFA500;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .item-quantity {
+            color: #666;
+            font-size: 12px;
+        }
+
+        .item-season {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #FFF;
+        }
+
+        .season-spring { background: #FF69B4; }
+        .season-summer { background: #FFA500; }
+        .season-autumn { background: #CD853F; }
+        .season-winter { background: #87CEEB; }
+
+        .current-season {
+            background: #FFF;
+            padding: 5px 10px;
+            border-radius: 5px;
+            color: #8B4513;
+            font-weight: bold;
+        }
+
+        .plot.watered {
+            background: linear-gradient(135deg, #4a6080, #5a7090);
+        }
+
+        .plot.fertilized {
+            border-color: #8BC34A;
+        }
+
+        .plot.growing {
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+
+        .dev-panel {
+            background: linear-gradient(135deg, #333, #555);
+            padding: 20px;
+            border-radius: 15px;
+            max-width: 500px;
+        }
+
+        .dev-panel h2 {
+            color: #FFD700;
+            margin-bottom: 20px;
+        }
+
+        .dev-option {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin: 10px 0;
+            background: #444;
+            border-radius: 8px;
+        }
+
+        .dev-option label {
+            color: #FFF;
+            font-weight: bold;
+        }
+
+        .dev-option input, .dev-option select {
+            padding: 8px;
+            border-radius: 5px;
+            border: none;
+            font-size: 14px;
+        }
+
+        .dev-btn-action {
+            width: 100%;
+            padding: 12px;
+            margin-top: 15px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .dev-btn-action:hover {
+            transform: translateY(-2px);
+        }
+
+        .dev-btn-save {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: #FFF;
+        }
+
+        .dev-btn-clear {
+            background: linear-gradient(135deg, #FF6B6B, #EE5A5A);
+            color: #FFF;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 10px;
+            color: #FFF;
+            font-weight: bold;
+            z-index: 2000;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .notification.success {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+        }
+
+        .notification.error {
+            background: linear-gradient(135deg, #FF6B6B, #EE5A5A);
+        }
+
+        .notification.info {
+            background: linear-gradient(135deg, #2196F3, #1976D2);
+        }
+
+        .empty-message {
+            text-align: center;
+            color: #8B4513;
+            font-size: 16px;
+            padding: 40px;
+        }
+
+        .harvest-hint {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            color: #333;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: bold;
+            animation: bounce 1s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-3px); }
+        }
+
+        .tooltip {
+            position: absolute;
+            background: #333;
+            color: #FFF;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            z-index: 1500;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="mainMenu" class="main-menu">
+            <h1 class="game-title">🌾 农场模拟游戏</h1>
+            <button class="menu-btn start-btn" onclick="startNewGame()">开始游戏</button>
+            <button class="menu-btn load-btn" onclick="loadGame()">读取存档</button>
+            <button class="menu-btn dev-btn" onclick="showDevPanel()">开发人员</button>
+        </div>
+
+        <div id="gameScreen" class="game-screen">
+            <div class="top-bar">
+                <div class="time-container">
+                    <div class="time-info">
+                        <span id="seasonDisplay">季节: 春季</span>
+                        <span id="timeDisplay">时间: 06:00</span>
+                        <span id="dayDisplay">第 1 天</span>
+                    </div>
+                    <div class="time-progress-container">
+                        <div id="timeProgress" class="time-progress" style="width: 25%;"></div>
+                        <div class="time-labels">
+                            <span>日</span>
+                            <span>夜</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="stats-bar">
+                    <div class="money-display">
+                        💰 资金: <span id="moneyDisplay">1000</span> 金币
+                    </div>
+                    <div class="function-buttons">
+                        <button class="func-btn backpack-btn" onclick="openBackpack()">🎒 背包</button>
+                        <button class="func-btn merchant-btn" onclick="openMerchant()">👨‍🌾 商人</button>
+                        <button class="func-btn market-btn" onclick="openMarket()">🏪 市场</button>
+                        <button class="func-btn warehouse-btn" onclick="openWarehouse()">📦 仓库</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="main-area">
+                <div class="field-container">
+                    <div id="fieldGrid" class="field-grid">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="backpackModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title">🎒 背包</h2>
+                    <button class="close-btn" onclick="closeBackpack()">×</button>
+                </div>
+                <div id="backpackContent" class="items-grid">
+                </div>
+            </div>
+        </div>
+
+        <div id="merchantModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title">👨‍🌾 商人 <span id="currentSeasonMerchant" class="current-season">当前季节: 春季</span></h2>
+                    <button class="close-btn" onclick="closeMerchant()">×</button>
+                </div>
+                <div id="merchantContent" class="items-grid">
+                </div>
+            </div>
+        </div>
+
+        <div id="marketModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title">🏪 市场</h2>
+                    <button class="close-btn" onclick="closeMarket()">×</button>
+                </div>
+                <div id="marketContent" class="items-grid">
+                </div>
+            </div>
+        </div>
+
+        <div id="warehouseModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title">📦 仓库</h2>
+                    <button class="close-btn" onclick="closeWarehouse()">×</button>
+                </div>
+                <div id="warehouseContent" class="items-grid">
+                </div>
+            </div>
+        </div>
+
+        <div id="devModal" class="modal">
+            <div class="dev-panel">
+                <div class="modal-header">
+                    <h2>🔧 开发人员面板</h2>
+                    <button class="close-btn" onclick="closeDevPanel()">×</button>
+                </div>
+                <div class="dev-option">
+                    <label>添加资金</label>
+                    <input type="number" id="devMoney" value="1000" min="0">
+                </div>
+                <div class="dev-option">
+                    <label>设置时间 (小时)</label>
+                    <input type="number" id="devHour" value="6" min="0" max="23">
+                </div>
+                <div class="dev-option">
+                    <label>设置季节</label>
+                    <select id="devSeason">
+                        <option value="spring">春季</option>
+                        <option value="summer">夏季</option>
+                        <option value="autumn">秋季</option>
+                        <option value="winter">冬季</option>
+                    </select>
+                </div>
+                <div class="dev-option">
+                    <label>加速时间 (x10)</label>
+                    <select id="devSpeed">
+                        <option value="1">正常</option>
+                        <option value="10">10倍速</option>
+                        <option value="100">100倍速</option>
+                    </select>
+                </div>
+                <button class="dev-btn-action dev-btn-save" onclick="applyDevChanges()">应用修改</button>
+                <button class="dev-btn-action dev-btn-clear" onclick="clearGameData()">清除存档</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const CONFIG = {
+            INITIAL_MONEY: 1000,
+            HOURS_PER_DAY: 24,
+            REAL_SECONDS_PER_GAME_HOUR: 10000 / 24,
+            SEASONS: ['spring', 'summer', 'autumn', 'winter'],
+            SEASON_NAMES: {
+                spring: '春季',
+                summer: '夏季',
+                autumn: '秋季',
+                winter: '冬季'
+            },
+            FIELD_ROWS: 5,
+            FIELD_COLS: 5
+        };
+
+        const SEEDS = {
+            turnip: { id: 'turnip', name: '白萝卜', icon: '🥕', season: 'spring', growTime: 4, sellPrice: 30, seedPrice: 15 },
+            potato: { id: 'potato', name: '土豆', icon: '🥔', season: 'spring', growTime: 5, sellPrice: 50, seedPrice: 25 },
+            strawberry: { id: 'strawberry', name: '草莓', icon: '🍓', season: 'spring', growTime: 8, sellPrice: 120, seedPrice: 60 },
+            tomato: { id: 'tomato', name: '番茄', icon: '🍅', season: 'summer', growTime: 5, sellPrice: 60, seedPrice: 30 },
+            corn: { id: 'corn', name: '玉米', icon: '🌽', season: 'summer', growTime: 6, sellPrice: 80, seedPrice: 40 },
+            pepper: { id: 'pepper', name: '辣椒', icon: '🌶️', season: 'summer', growTime: 7, sellPrice: 100, seedPrice: 50 },
+            pumpkin: { id: 'pumpkin', name: '南瓜', icon: '🎃', season: 'autumn', growTime: 7, sellPrice: 120, seedPrice: 60 },
+            carrot: { id: 'carrot', name: '胡萝卜', icon: '🥕', season: 'autumn', growTime: 4, sellPrice: 35, seedPrice: 18 },
+            eggplant: { id: 'eggplant', name: '茄子', icon: '🍆', season: 'autumn', growTime: 5, sellPrice: 70, seedPrice: 35 },
+            wheat: { id: 'wheat', name: '小麦', icon: '🌾', season: 'winter', growTime: 6, sellPrice: 90, seedPrice: 45 },
+            cabbage: { id: 'cabbage', name: '卷心菜', icon: '🥬', season: 'winter', growTime: 5, sellPrice: 55, seedPrice: 28 },
+            onion: { id: 'onion', name: '洋葱', icon: '🧅', season: 'winter', growTime: 4, sellPrice: 40, seedPrice: 20 }
+        };
+
+        const FERTILIZERS = {
+            basic: { id: 'basic', name: '基础肥料', icon: '💩', price: 20, effect: '加速生长 2 小时' },
+            quality: { id: 'quality', name: '优质肥料', icon: '🧪', price: 50, effect: '加速生长 5 小时' }
+        };
+
+        let gameState = {
+            money: CONFIG.INITIAL_MONEY,
+            hour: 6,
+            day: 1,
+            season: 'spring',
+            backpack: { seeds: {}, fertilizers: {}, crops: {} },
+            warehouse: { seeds: {}, fertilizers: {}, crops: {} },
+            field: [],
+            selectedPlot: null,
+            timeSpeed: 1,
+            gameLoopId: null
+        };
+
+        function initializeField() {
+            gameState.field = [];
+            for (let i = 0; i < CONFIG.FIELD_ROWS * CONFIG.FIELD_COLS; i++) {
+                gameState.field.push({
+                    id: i,
+                    crop: null,
+                    watered: false,
+                    fertilized: false,
+                    fertilizer: null
+                });
+            }
+        }
+
+        function renderField() {
+            const grid = document.getElementById('fieldGrid');
+            grid.innerHTML = '';
+
+            gameState.field.forEach((plot, index) => {
+                const plotEl = document.createElement('div');
+                plotEl.className = `plot ${plot.watered ? 'watered' : ''} ${plot.fertilized ? 'fertilized' : ''} ${gameState.selectedPlot === index ? 'selected' : ''} ${plot.crop && plot.crop.growProgress < plot.crop.growTime ? 'growing' : ''}`;
+                plotEl.dataset.index = index;
+
+                if (plot.crop) {
+                    const seedInfo = SEEDS[plot.crop.type];
+                    const isReady = plot.crop.growProgress >= plot.crop.growTime;
+                    plotEl.innerHTML = `
+                        <div class="plot-icon">${isReady ? seedInfo.icon : '🌱'}</div>
+                        <div class="plot-info">
+                            ${isReady ? '可收获' : `生长: ${Math.floor(plot.crop.growProgress)}/${plot.crop.growTime}h`}
+                            ${plot.watered ? '💧' : ''}
+                            ${plot.fertilized ? '✨' : ''}
+                        </div>
+                        ${isReady ? '<div class="harvest-hint">收获!</div>' : ''}
+                    `;
+                } else {
+                    plotEl.innerHTML = `
+                        <div class="plot-icon">🟫</div>
+                        <div class="plot-info">空地</div>
+                    `;
+                }
+
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'plot-actions';
+
+                if (plot.crop) {
+                    const isReady = plot.crop.growProgress >= plot.crop.growTime;
+                    
+                    if (!plot.watered) {
+                        const waterBtn = document.createElement('button');
+                        waterBtn.className = 'action-btn water-btn';
+                        waterBtn.textContent = '💧 浇水';
+                        waterBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            waterPlot(index);
+                        };
+                        actionsDiv.appendChild(waterBtn);
+                    }
+
+                    if (!plot.fertilized && Object.keys(gameState.backpack.fertilizers).length > 0) {
+                        const fertBtn = document.createElement('button');
+                        fertBtn.className = 'action-btn fertilize-btn';
+                        fertBtn.textContent = '✨ 施肥';
+                        fertBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            fertilizePlot(index);
+                        };
+                        actionsDiv.appendChild(fertBtn);
+                    }
+
+                    if (isReady) {
+                        const harvestBtn = document.createElement('button');
+                        harvestBtn.className = 'action-btn harvest-btn';
+                        harvestBtn.textContent = '🧺 采摘';
+                        harvestBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            harvestPlot(index);
+                        };
+                        actionsDiv.appendChild(harvestBtn);
+                    }
+                }
+
+                plotEl.appendChild(actionsDiv);
+
+                plotEl.onclick = () => selectPlot(index);
+
+                plotEl.ondragover = (e) => {
+                    e.preventDefault();
+                    if (!plot.crop) {
+                        plotEl.classList.add('drag-over');
+                    }
+                };
+
+                plotEl.ondragleave = () => {
+                    plotEl.classList.remove('drag-over');
+                };
+
+                plotEl.ondrop = (e) => {
+                    e.preventDefault();
+                    plotEl.classList.remove('drag-over');
+                    const seedId = e.dataTransfer.getData('text/plain');
+                    plantSeed(index, seedId);
+                };
+
+                grid.appendChild(plotEl);
+            });
+        }
+
+        function selectPlot(index) {
+            if (gameState.selectedPlot === index) {
+                gameState.selectedPlot = null;
+            } else {
+                gameState.selectedPlot = index;
+            }
+            renderField();
+        }
+
+        function waterPlot(index) {
+            const plot = gameState.field[index];
+            if (!plot.crop || plot.watered) return;
+
+            plot.watered = true;
+            showNotification('浇水成功！', 'success');
+            renderField();
+            autoSave();
+        }
+
+        function fertilizePlot(index) {
+            const plot = gameState.field[index];
+            if (!plot.crop || plot.fertilized) return;
+
+            const fertilizers = Object.keys(gameState.backpack.fertilizers);
+            if (fertilizers.length === 0) {
+                showNotification('背包里没有肥料！', 'error');
+                return;
+            }
+
+            const fertId = fertilizers[0];
+            if (gameState.backpack.fertilizers[fertId] > 0) {
+                gameState.backpack.fertilizers[fertId]--;
+                if (gameState.backpack.fertilizers[fertId] <= 0) {
+                    delete gameState.backpack.fertilizers[fertId];
+                }
+
+                plot.fertilized = true;
+                plot.fertilizer = fertId;
+
+                const fertInfo = FERTILIZERS[fertId];
+                let bonusHours = fertId === 'basic' ? 2 : 5;
+                plot.crop.growProgress += bonusHours;
+
+                showNotification(`施肥成功！加速生长 ${bonusHours} 小时`, 'success');
+                renderField();
+                autoSave();
+            } else {
+                showNotification('肥料数量不足！', 'error');
+            }
+        }
+
+        function harvestPlot(index) {
+            const plot = gameState.field[index];
+            if (!plot.crop) return;
+
+            const seedInfo = SEEDS[plot.crop.type];
+            if (plot.crop.growProgress >= plot.crop.growTime) {
+                if (!gameState.backpack.crops[plot.crop.type]) {
+                    gameState.backpack.crops[plot.crop.type] = 0;
+                }
+                gameState.backpack.crops[plot.crop.type]++;
+
+                plot.crop = null;
+                plot.watered = false;
+                plot.fertilized = false;
+                plot.fertilizer = null;
+
+                showNotification(`收获了 ${seedInfo.name}！`, 'success');
+                gameState.selectedPlot = null;
+                renderField();
+                autoSave();
+            }
+        }
+
+        function plantSeed(index, seedId) {
+            const plot = gameState.field[index];
+            const seedInfo = SEEDS[seedId];
+
+            if (!seedInfo) {
+                showNotification('无效的种子！', 'error');
+                return;
+            }
+
+            if (plot.crop) {
+                showNotification('这块地已经种了作物！', 'error');
+                return;
+            }
+
+            if (seedInfo.season !== gameState.season) {
+                showNotification(`${seedInfo.name} 只能在 ${CONFIG.SEASON_NAMES[seedInfo.season]} 种植！`, 'error');
+                return;
+            }
+
+            if (!gameState.backpack.seeds[seedId] || gameState.backpack.seeds[seedId] <= 0) {
+                showNotification('背包里没有这种种子！', 'error');
+                return;
+            }
+
+            gameState.backpack.seeds[seedId]--;
+            if (gameState.backpack.seeds[seedId] <= 0) {
+                delete gameState.backpack.seeds[seedId];
+            }
+
+            plot.crop = {
+                type: seedId,
+                growTime: seedInfo.growTime,
+                growProgress: 0,
+                plantedDay: gameState.day
+            };
+
+            showNotification(`种植了 ${seedInfo.name}！`, 'success');
+            renderField();
+            autoSave();
+        }
+
+        function updateGameTime() {
+            gameState.hour++;
+
+            if (gameState.hour >= CONFIG.HOURS_PER_DAY) {
+                gameState.hour = 0;
+                gameState.day++;
+
+                if (gameState.day > 30) {
+                    gameState.day = 1;
+                    const currentSeasonIndex = CONFIG.SEASONS.indexOf(gameState.season);
+                    gameState.season = CONFIG.SEASONS[(currentSeasonIndex + 1) % 4];
+
+                    gameState.field.forEach((plot, index) => {
+                        if (plot.crop) {
+                            const seedInfo = SEEDS[plot.crop.type];
+                            if (seedInfo.season !== gameState.season) {
+                                plot.crop = null;
+                                plot.watered = false;
+                                plot.fertilized = false;
+                            }
+                        }
+                    });
+
+                    showNotification(`季节变化：${CONFIG.SEASON_NAMES[gameState.season]}`, 'info');
+                }
+
+                gameState.field.forEach(plot => {
+                    plot.watered = false;
+                });
+            }
+
+            gameState.field.forEach(plot => {
+                if (plot.crop && plot.watered) {
+                    plot.crop.growProgress += 1;
+                }
+            });
+
+            updateDisplay();
+            renderField();
+        }
+
+        function updateDisplay() {
+            const hourStr = String(gameState.hour).padStart(2, '0');
+            const minuteStr = '00';
+            document.getElementById('timeDisplay').textContent = `时间: ${hourStr}:${minuteStr}`;
+            document.getElementById('dayDisplay').textContent = `第 ${gameState.day} 天`;
+            document.getElementById('seasonDisplay').textContent = `季节: ${CONFIG.SEASON_NAMES[gameState.season]}`;
+            document.getElementById('moneyDisplay').textContent = gameState.money;
+
+            const progress = (gameState.hour / CONFIG.HOURS_PER_DAY) * 100;
+            document.getElementById('timeProgress').style.width = `${progress}%`;
+        }
+
+        function startNewGame() {
+            gameState = {
+                money: CONFIG.INITIAL_MONEY,
+                hour: 6,
+                day: 1,
+                season: 'spring',
+                backpack: { seeds: {}, fertilizers: {}, crops: {} },
+                warehouse: { seeds: {}, fertilizers: {}, crops: {} },
+                field: [],
+                selectedPlot: null,
+                timeSpeed: 1,
+                gameLoopId: null
+            };
+
+            initializeField();
+
+            document.getElementById('mainMenu').style.display = 'none';
+            document.getElementById('gameScreen').style.display = 'block';
+
+            updateDisplay();
+            renderField();
+            startGameLoop();
+
+            showNotification('游戏开始！初始资金：1000 金币', 'success');
+        }
+
+        function loadGame() {
+            const savedData = localStorage.getItem('farmGameSave');
+            if (!savedData) {
+                showNotification('没有找到存档！', 'error');
+                return;
+            }
+
+            try {
+                gameState = JSON.parse(savedData);
+                
+                if (gameState.field.length === 0) {
+                    initializeField();
+                }
+
+                document.getElementById('mainMenu').style.display = 'none';
+                document.getElementById('gameScreen').style.display = 'block';
+
+                updateDisplay();
+                renderField();
+                startGameLoop();
+
+                showNotification('存档加载成功！', 'success');
+            } catch (e) {
+                showNotification('存档数据损坏！', 'error');
+            }
+        }
+
+        function autoSave() {
+            localStorage.setItem('farmGameSave', JSON.stringify(gameState));
+        }
+
+        function startGameLoop() {
+            if (gameState.gameLoopId) {
+                clearInterval(gameState.gameLoopId);
+            }
+
+            const interval = CONFIG.REAL_SECONDS_PER_GAME_HOUR * 1000 / gameState.timeSpeed;
+            gameState.gameLoopId = setInterval(() => {
+                updateGameTime();
+                autoSave();
+            }, interval);
+        }
+
+        function openBackpack() {
+            renderBackpack();
+            document.getElementById('backpackModal').classList.add('active');
+        }
+
+        function closeBackpack() {
+            document.getElementById('backpackModal').classList.remove('active');
+        }
+
+        function renderBackpack() {
+            const content = document.getElementById('backpackContent');
+            content.innerHTML = '';
+
+            let hasItems = false;
+
+            Object.keys(gameState.backpack.seeds).forEach(seedId => {
+                const seedInfo = SEEDS[seedId];
+                const quantity = gameState.backpack.seeds[seedId];
+                if (quantity > 0) {
+                    hasItems = true;
+                    const card = createItemCard(seedInfo, quantity, 'seed');
+                    content.appendChild(card);
+                }
+            });
+
+            Object.keys(gameState.backpack.fertilizers).forEach(fertId => {
+                const fertInfo = FERTILIZERS[fertId];
+                const quantity = gameState.backpack.fertilizers[fertId];
+                if (quantity > 0) {
+                    hasItems = true;
+                    const card = createItemCard(fertInfo, quantity, 'fertilizer');
+                    content.appendChild(card);
+                }
+            });
+
+            Object.keys(gameState.backpack.crops).forEach(cropId => {
+                const cropInfo = SEEDS[cropId];
+                const quantity = gameState.backpack.crops[cropId];
+                if (quantity > 0) {
+                    hasItems = true;
+                    const card = createItemCard(cropInfo, quantity, 'crop');
+                    content.appendChild(card);
+                }
+            });
+
+            if (!hasItems) {
+                content.innerHTML = '<div class="empty-message">背包是空的</div>';
+            }
+        }
+
+        function createItemCard(item, quantity, type) {
+            const card = document.createElement('div');
+            card.className = 'item-card';
+
+            let seasonClass = '';
+            let seasonBadge = '';
+            if (type === 'seed' && item.season) {
+                seasonClass = item.season === gameState.season ? '' : 'disabled';
+                seasonBadge = `<span class="item-season season-${item.season}">${CONFIG.SEASON_NAMES[item.season]}</span>`;
+            }
+
+            let priceDisplay = '';
+            if (type === 'seed') {
+                priceDisplay = `<div class="item-price">种子价: ${item.seedPrice} 金币</div>`;
+            } else if (type === 'crop') {
+                priceDisplay = `<div class="item-price">售价: ${item.sellPrice} 金币</div>`;
+            } else if (type === 'fertilizer') {
+                priceDisplay = `<div class="item-price">价格: ${item.price} 金币</div>`;
+            }
+
+            card.innerHTML = `
+                ${seasonBadge}
+                <div class="item-icon">${item.icon}</div>
+                <div class="item-name">${item.name}</div>
+                ${priceDisplay}
+                <div class="item-quantity">数量: ${quantity}</div>
+            `;
+
+            if (type === 'seed' && seasonClass === '') {
+                card.draggable = true;
+                card.ondragstart = (e) => {
+                    e.dataTransfer.setData('text/plain', item.id);
+                    card.classList.add('dragging');
+                };
+                card.ondragend = () => {
+                    card.classList.remove('dragging');
+                };
+            } else if (seasonClass !== '') {
+                card.classList.add('disabled');
+                card.title = `该种子只能在 ${CONFIG.SEASON_NAMES[item.season]} 种植`;
+            }
+
+            return card;
+        }
+
+        function openMerchant() {
+            document.getElementById('currentSeasonMerchant').textContent = `当前季节: ${CONFIG.SEASON_NAMES[gameState.season]}`;
+            renderMerchant();
+            document.getElementById('merchantModal').classList.add('active');
+        }
+
+        function closeMerchant() {
+            document.getElementById('merchantModal').classList.remove('active');
+        }
+
+        function renderMerchant() {
+            const content = document.getElementById('merchantContent');
+            content.innerHTML = '';
+
+            Object.values(SEEDS).forEach(seed => {
+                const card = document.createElement('div');
+                const isCurrentSeason = seed.season === gameState.season;
+                
+                card.className = `item-card ${!isCurrentSeason ? 'disabled' : ''}`;
+                card.innerHTML = `
+                    <span class="item-season season-${seed.season}">${CONFIG.SEASON_NAMES[seed.season]}</span>
+                    <div class="item-icon">${seed.icon}</div>
+                    <div class="item-name">${seed.name} 种子</div>
+                    <div class="item-price">价格: ${seed.seedPrice} 金币</div>
+                    <div class="item-quantity">生长时间: ${seed.growTime} 小时</div>
+                `;
+
+                if (isCurrentSeason) {
+                    card.style.cursor = 'pointer';
+                    card.onclick = () => buySeed(seed.id);
+                } else {
+                    card.title = `该种子只能在 ${CONFIG.SEASON_NAMES[seed.season]} 购买`;
+                }
+
+                content.appendChild(card);
+            });
+
+            Object.values(FERTILIZERS).forEach(fert => {
+                const card = document.createElement('div');
+                card.className = 'item-card';
+                card.style.cursor = 'pointer';
+                card.innerHTML = `
+                    <div class="item-icon">${fert.icon}</div>
+                    <div class="item-name">${fert.name}</div>
+                    <div class="item-price">价格: ${fert.price} 金币</div>
+                    <div class="item-quantity">${fert.effect}</div>
+                `;
+
+                card.onclick = () => buyFertilizer(fert.id);
+                content.appendChild(card);
+            });
+        }
+
+        function buySeed(seedId) {
+            const seedInfo = SEEDS[seedId];
+            if (gameState.money >= seedInfo.seedPrice) {
+                gameState.money -= seedInfo.seedPrice;
+                if (!gameState.backpack.seeds[seedId]) {
+                    gameState.backpack.seeds[seedId] = 0;
+                }
+                gameState.backpack.seeds[seedId]++;
+                updateDisplay();
+                renderMerchant();
+                autoSave();
+                showNotification(`购买了 ${seedInfo.name} 种子！`, 'success');
+            } else {
+                showNotification('资金不足！', 'error');
+            }
+        }
+
+        function buyFertilizer(fertId) {
+            const fertInfo = FERTILIZERS[fertId];
+            if (gameState.money >= fertInfo.price) {
+                gameState.money -= fertInfo.price;
+                if (!gameState.backpack.fertilizers[fertId]) {
+                    gameState.backpack.fertilizers[fertId] = 0;
+                }
+                gameState.backpack.fertilizers[fertId]++;
+                updateDisplay();
+                renderMerchant();
+                autoSave();
+                showNotification(`购买了 ${fertInfo.name}！`, 'success');
+            } else {
+                showNotification('资金不足！', 'error');
+            }
+        }
+
+        function openMarket() {
+            renderMarket();
+            document.getElementById('marketModal').classList.add('active');
+        }
+
+        function closeMarket() {
+            document.getElementById('marketModal').classList.remove('active');
+        }
+
+        function renderMarket() {
+            const content = document.getElementById('marketContent');
+            content.innerHTML = '';
+
+            let hasItems = false;
+
+            Object.keys(gameState.backpack.crops).forEach(cropId => {
+                const cropInfo = SEEDS[cropId];
+                const quantity = gameState.backpack.crops[cropId];
+                if (quantity > 0) {
+                    hasItems = true;
+                    const card = document.createElement('div');
+                    card.className = 'item-card';
+                    card.style.cursor = 'pointer';
+                    card.innerHTML = `
+                        <div class="item-icon">${cropInfo.icon}</div>
+                        <div class="item-name">${cropInfo.name}</div>
+                        <div class="item-price">售价: ${cropInfo.sellPrice} 金币</div>
+                        <div class="item-quantity">库存: ${quantity}</div>
+                    `;
+
+                    card.onclick = () => sellCrop(cropId);
+                    content.appendChild(card);
+                }
+            });
+
+            Object.keys(gameState.warehouse.crops).forEach(cropId => {
+                const cropInfo = SEEDS[cropId];
+                const quantity = gameState.warehouse.crops[cropId];
+                if (quantity > 0 && !gameState.backpack.crops[cropId]) {
+                    hasItems = true;
+                    const card = document.createElement('div');
+                    card.className = 'item-card';
+                    card.style.cursor = 'pointer';
+                    card.innerHTML = `
+                        <div class="item-icon">${cropInfo.icon}</div>
+                        <div class="item-name">${cropInfo.name} (仓库)</div>
+                        <div class="item-price">售价: ${cropInfo.sellPrice} 金币</div>
+                        <div class="item-quantity">库存: ${quantity}</div>
+                    `;
+
+                    card.onclick = () => sellWarehouseCrop(cropId);
+                    content.appendChild(card);
+                }
+            });
+
+            if (!hasItems) {
+                content.innerHTML = '<div class="empty-message">没有可出售的作物</div>';
+            }
+        }
+
+        function sellCrop(cropId) {
+            const cropInfo = SEEDS[cropId];
+            if (gameState.backpack.crops[cropId] > 0) {
+                gameState.backpack.crops[cropId]--;
+                gameState.money += cropInfo.sellPrice;
+                if (gameState.backpack.crops[cropId] <= 0) {
+                    delete gameState.backpack.crops[cropId];
+                }
+                updateDisplay();
+                renderMarket();
+                autoSave();
+                showNotification(`出售了 ${cropInfo.name}，获得 ${cropInfo.sellPrice} 金币！`, 'success');
+            }
+        }
+
+        function sellWarehouseCrop(cropId) {
+            const cropInfo = SEEDS[cropId];
+            if (gameState.warehouse.crops[cropId] > 0) {
+                gameState.warehouse.crops[cropId]--;
+                gameState.money += cropInfo.sellPrice;
+                if (gameState.warehouse.crops[cropId] <= 0) {
+                    delete gameState.warehouse.crops[cropId];
+                }
+                updateDisplay();
+                renderMarket();
+                autoSave();
+                showNotification(`出售了仓库中的 ${cropInfo.name}，获得 ${cropInfo.sellPrice} 金币！`, 'success');
+            }
+        }
+
+        function openWarehouse() {
+            renderWarehouse();
+            document.getElementById('warehouseModal').classList.add('active');
+        }
+
+        function closeWarehouse() {
+            document.getElementById('warehouseModal').classList.remove('active');
+        }
+
+        function renderWarehouse() {
+            const content = document.getElementById('warehouseContent');
+            content.innerHTML = '';
+
+            let hasItems = false;
+
+            Object.keys(gameState.warehouse.seeds).forEach(seedId => {
+                const seedInfo = SEEDS[seedId];
+                const quantity = gameState.warehouse.seeds[seedId];
+                if (quantity > 0) {
+                    hasItems = true;
+                    const card = document.createElement('div');
+                    card.className = 'item-card';
+                    card.innerHTML = `
+                        <span class="item-season season-${seedInfo.season}">${CONFIG.SEASON_NAMES[seedInfo.season]}</span>
+                        <div class="item-icon">${seedInfo.icon}</div>
+                        <div class="item-name">${seedInfo.name} 种子</div>
+                        <div class="item-quantity">数量: ${quantity}</div>
+                    `;
+                    content.appendChild(card);
+                }
+            });
+
+            Object.keys(gameState.warehouse.fertilizers).forEach(fertId => {
+                const fertInfo = FERTILIZERS[fertId];
+                const quantity = gameState.warehouse.fertilizers[fertId];
+                if (quantity > 0) {
+                    hasItems = true;
+                    const card = document.createElement('div');
+                    card.className = 'item-card';
+                    card.innerHTML = `
+                        <div class="item-icon">${fertInfo.icon}</div>
+                        <div class="item-name">${fertInfo.name}</div>
+                        <div class="item-quantity">数量: ${quantity}</div>
+                    `;
+                    content.appendChild(card);
+                }
+            });
+
+            Object.keys(gameState.warehouse.crops).forEach(cropId => {
+                const cropInfo = SEEDS[cropId];
+                const quantity = gameState.warehouse.crops[cropId];
+                if (quantity > 0) {
+                    hasItems = true;
+                    const card = document.createElement('div');
+                    card.className = 'item-card';
+                    card.innerHTML = `
+                        <div class="item-icon">${cropInfo.icon}</div>
+                        <div class="item-name">${cropInfo.name}</div>
+                        <div class="item-quantity">数量: ${quantity}</div>
+                    `;
+                    content.appendChild(card);
+                }
+            });
+
+            if (!hasItems) {
+                content.innerHTML = '<div class="empty-message">仓库是空的</div>';
+            }
+        }
+
+        function showDevPanel() {
+            document.getElementById('devModal').classList.add('active');
+        }
+
+        function closeDevPanel() {
+            document.getElementById('devModal').classList.remove('active');
+        }
+
+        function applyDevChanges() {
+            const money = parseInt(document.getElementById('devMoney').value) || 0;
+            const hour = parseInt(document.getElementById('devHour').value) || 0;
+            const season = document.getElementById('devSeason').value;
+            const speed = parseInt(document.getElementById('devSpeed').value) || 1;
+
+            gameState.money = Math.max(0, money);
+            gameState.hour = Math.max(0, Math.min(23, hour));
+            gameState.season = season;
+            gameState.timeSpeed = speed;
+
+            updateDisplay();
+            startGameLoop();
+            autoSave();
+
+            showNotification('开发修改已应用！', 'success');
+            closeDevPanel();
+        }
+
+        function clearGameData() {
+            if (confirm('确定要清除所有游戏数据吗？')) {
+                localStorage.removeItem('farmGameSave');
+                showNotification('游戏数据已清除！', 'success');
+                closeDevPanel();
+            }
+        }
+
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.style.animation = 'slideIn 0.3s ease reverse';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedData = localStorage.getItem('farmGameSave');
+        });
+
+        window.onclick = (event) => {
+            if (event.target.classList.contains('modal')) {
+                event.target.classList.remove('active');
+            }
+        };
+    </script>
+</body>
+</html>
