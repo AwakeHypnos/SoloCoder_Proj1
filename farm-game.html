@@ -108,7 +108,7 @@
         .time-progress {
             height: 100%;
             background: linear-gradient(90deg, #FFD700, #FFA500);
-            transition: width 0.1s linear;
+            transition: width 1s ease-in-out;
         }
 
         .time-labels {
@@ -438,6 +438,21 @@
             animation: pulse 1s infinite;
         }
 
+        .plot.locked {
+            opacity: 0.3;
+            cursor: not-allowed;
+            background: linear-gradient(135deg, #333, #444);
+        }
+
+        .plot.locked::after {
+            content: '🔒';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 20px;
+        }
+
         @keyframes pulse {
             0%, 100% { transform: scale(1); }
             50% { transform: scale(1.02); }
@@ -707,7 +722,7 @@
         const CONFIG = {
             INITIAL_MONEY: 1000,
             HOURS_PER_DAY: 24,
-            REAL_SECONDS_PER_GAME_HOUR: 10000 / 24,
+            REAL_SECONDS_PER_GAME_HOUR: 600 / 24,
             SEASONS: ['spring', 'summer', 'autumn', 'winter'],
             SEASON_NAMES: {
                 spring: '春季',
@@ -716,7 +731,8 @@
                 winter: '冬季'
             },
             FIELD_ROWS: 5,
-            FIELD_COLS: 5
+            FIELD_COLS: 5,
+            UNLOCK_COST: 200
         };
 
         const SEEDS = {
@@ -754,15 +770,72 @@
 
         function initializeField() {
             gameState.field = [];
+            const centerIndex = Math.floor((CONFIG.FIELD_ROWS * CONFIG.FIELD_COLS) / 2);
             for (let i = 0; i < CONFIG.FIELD_ROWS * CONFIG.FIELD_COLS; i++) {
                 gameState.field.push({
                     id: i,
                     crop: null,
                     watered: false,
                     fertilized: false,
-                    fertilizer: null
+                    fertilizer: null,
+                    locked: i !== centerIndex
                 });
             }
+        }
+
+        function getAdjacentUnlockedIndices() {
+            const unlocked = gameState.field.filter(p => !p.locked).map(p => p.id);
+            const adjacent = new Set();
+            
+            unlocked.forEach(idx => {
+                const row = Math.floor(idx / CONFIG.FIELD_COLS);
+                const col = idx % CONFIG.FIELD_COLS;
+                
+                const neighbors = [
+                    { r: row - 1, c: col },
+                    { r: row + 1, c: col },
+                    { r: row, c: col - 1 },
+                    { r: row, c: col + 1 }
+                ];
+                
+                neighbors.forEach(n => {
+                    if (n.r >= 0 && n.r < CONFIG.FIELD_ROWS && n.c >= 0 && n.c < CONFIG.FIELD_COLS) {
+                        const nIdx = n.r * CONFIG.FIELD_COLS + n.c;
+                        if (gameState.field[nIdx].locked) {
+                            adjacent.add(nIdx);
+                        }
+                    }
+                });
+            });
+            
+            return Array.from(adjacent);
+        }
+
+        function unlockPlot(index) {
+            const plot = gameState.field[index];
+            if (!plot.locked) {
+                showNotification('这块田地已经解锁了！', 'info');
+                return false;
+            }
+
+            const adjacent = getAdjacentUnlockedIndices();
+            if (!adjacent.includes(index)) {
+                showNotification('只能解锁相邻的田地！', 'error');
+                return false;
+            }
+
+            if (gameState.money < CONFIG.UNLOCK_COST) {
+                showNotification(`解锁需要 ${CONFIG.UNLOCK_COST} 金币！`, 'error');
+                return false;
+            }
+
+            gameState.money -= CONFIG.UNLOCK_COST;
+            plot.locked = false;
+            updateDisplay();
+            renderField();
+            autoSave();
+            showNotification(`花费 ${CONFIG.UNLOCK_COST} 金币解锁了新田地！`, 'success');
+            return true;
         }
 
         function renderField() {
@@ -771,8 +844,29 @@
 
             gameState.field.forEach((plot, index) => {
                 const plotEl = document.createElement('div');
-                plotEl.className = `plot ${plot.watered ? 'watered' : ''} ${plot.fertilized ? 'fertilized' : ''} ${gameState.selectedPlot === index ? 'selected' : ''} ${plot.crop && plot.crop.growProgress < plot.crop.growTime ? 'growing' : ''}`;
+                plotEl.className = `plot ${plot.locked ? 'locked' : ''} ${plot.watered ? 'watered' : ''} ${plot.fertilized ? 'fertilized' : ''} ${gameState.selectedPlot === index ? 'selected' : ''} ${plot.crop && plot.crop.growProgress < plot.crop.growTime ? 'growing' : ''}`;
                 plotEl.dataset.index = index;
+
+                if (plot.locked) {
+                    const adjacent = getAdjacentUnlockedIndices();
+                    const canUnlock = adjacent.includes(index);
+                    plotEl.innerHTML = `
+                        <div class="plot-info" style="margin-top: 20px;">
+                            ${canUnlock ? `解锁: ${CONFIG.UNLOCK_COST}金` : '🔒'}
+                        </div>
+                    `;
+                    if (canUnlock) {
+                        plotEl.style.cursor = 'pointer';
+                        plotEl.style.opacity = '0.7';
+                        plotEl.onclick = () => {
+                            if (confirm(`花费 ${CONFIG.UNLOCK_COST} 金币解锁这块田地？`)) {
+                                unlockPlot(index);
+                            }
+                        };
+                    }
+                    grid.appendChild(plotEl);
+                    return;
+                }
 
                 if (plot.crop) {
                     const seedInfo = SEEDS[plot.crop.type];
@@ -839,7 +933,8 @@
 
                 plotEl.ondragover = (e) => {
                     e.preventDefault();
-                    if (!plot.crop) {
+                    e.dataTransfer.dropEffect = 'move';
+                    if (!plot.crop && !plot.locked) {
                         plotEl.classList.add('drag-over');
                     }
                 };
@@ -850,9 +945,12 @@
 
                 plotEl.ondrop = (e) => {
                     e.preventDefault();
+                    e.stopPropagation();
                     plotEl.classList.remove('drag-over');
                     const seedId = e.dataTransfer.getData('text/plain');
-                    plantSeed(index, seedId);
+                    if (seedId) {
+                        plantSeed(index, seedId);
+                    }
                 };
 
                 grid.appendChild(plotEl);
@@ -1024,7 +1122,38 @@
             document.getElementById('moneyDisplay').textContent = gameState.money;
 
             const progress = (gameState.hour / CONFIG.HOURS_PER_DAY) * 100;
-            document.getElementById('timeProgress').style.width = `${progress}%`;
+            animateProgress(progress);
+        }
+
+        let currentProgress = 0;
+        let animationFrameId = null;
+
+        function animateProgress(targetProgress) {
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+            }
+
+            const startProgress = currentProgress;
+            const startTime = performance.now();
+            const duration = 1000;
+
+            function animate(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+
+                const easeInOutCubic = (t) => {
+                    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+                };
+
+                currentProgress = startProgress + (targetProgress - startProgress) * easeInOutCubic(progress);
+                document.getElementById('timeProgress').style.width = `${currentProgress}%`;
+
+                if (progress < 1) {
+                    animationFrameId = requestAnimationFrame(animate);
+                }
+            }
+
+            animationFrameId = requestAnimationFrame(animate);
         }
 
         function startNewGame() {
@@ -1158,7 +1287,9 @@
             }
 
             let priceDisplay = '';
+            let displayName = item.name;
             if (type === 'seed') {
+                displayName = item.name + ' 种子';
                 priceDisplay = `<div class="item-price">种子价: ${item.seedPrice} 金币</div>`;
             } else if (type === 'crop') {
                 priceDisplay = `<div class="item-price">售价: ${item.sellPrice} 金币</div>`;
@@ -1169,7 +1300,7 @@
             card.innerHTML = `
                 ${seasonBadge}
                 <div class="item-icon">${item.icon}</div>
-                <div class="item-name">${item.name}</div>
+                <div class="item-name">${displayName}</div>
                 ${priceDisplay}
                 <div class="item-quantity">数量: ${quantity}</div>
             `;
@@ -1177,6 +1308,7 @@
             if (type === 'seed' && seasonClass === '') {
                 card.draggable = true;
                 card.ondragstart = (e) => {
+                    e.dataTransfer.effectAllowed = 'move';
                     e.dataTransfer.setData('text/plain', item.id);
                     card.classList.add('dragging');
                 };
