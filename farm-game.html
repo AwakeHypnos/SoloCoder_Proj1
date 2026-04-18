@@ -453,6 +453,16 @@
             font-size: 20px;
         }
 
+        .plot.can-plant {
+            border-color: #FFD700;
+            animation: glow 1s infinite;
+        }
+
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 5px #FFD700; }
+            50% { box-shadow: 0 0 20px #FFD700, 0 0 30px #FFA500; }
+        }
+
         @keyframes pulse {
             0%, 100% { transform: scale(1); }
             50% { transform: scale(1.02); }
@@ -764,9 +774,13 @@
             warehouse: { seeds: {}, fertilizers: {}, crops: {} },
             field: [],
             selectedPlot: null,
+            selectedSeed: null,
             timeSpeed: 1,
-            gameLoopId: null
+            gameLoopId: null,
+            lastHourUpdateTime: 0
         };
+
+        let smoothProgressLoopId = null;
 
         function initializeField() {
             gameState.field = [];
@@ -811,22 +825,26 @@
             return Array.from(adjacent);
         }
 
-        function unlockPlot(index) {
+        function tryUnlockPlot(index) {
             const plot = gameState.field[index];
             if (!plot.locked) {
                 showNotification('这块田地已经解锁了！', 'info');
-                return false;
+                return;
             }
 
             const adjacent = getAdjacentUnlockedIndices();
             if (!adjacent.includes(index)) {
                 showNotification('只能解锁相邻的田地！', 'error');
-                return false;
+                return;
             }
 
             if (gameState.money < CONFIG.UNLOCK_COST) {
                 showNotification(`解锁需要 ${CONFIG.UNLOCK_COST} 金币！`, 'error');
-                return false;
+                return;
+            }
+
+            if (!confirm(`花费 ${CONFIG.UNLOCK_COST} 金币解锁这块田地？`)) {
+                return;
             }
 
             gameState.money -= CONFIG.UNLOCK_COST;
@@ -835,7 +853,6 @@
             renderField();
             autoSave();
             showNotification(`花费 ${CONFIG.UNLOCK_COST} 金币解锁了新田地！`, 'success');
-            return true;
         }
 
         function renderField() {
@@ -844,7 +861,8 @@
 
             gameState.field.forEach((plot, index) => {
                 const plotEl = document.createElement('div');
-                plotEl.className = `plot ${plot.locked ? 'locked' : ''} ${plot.watered ? 'watered' : ''} ${plot.fertilized ? 'fertilized' : ''} ${gameState.selectedPlot === index ? 'selected' : ''} ${plot.crop && plot.crop.growProgress < plot.crop.growTime ? 'growing' : ''}`;
+                const canPlant = gameState.selectedSeed && !plot.locked && !plot.crop;
+                plotEl.className = `plot ${plot.locked ? 'locked' : ''} ${plot.watered ? 'watered' : ''} ${plot.fertilized ? 'fertilized' : ''} ${gameState.selectedPlot === index ? 'selected' : ''} ${canPlant ? 'can-plant' : ''} ${plot.crop && plot.crop.growProgress < plot.crop.growTime ? 'growing' : ''}`;
                 plotEl.dataset.index = index;
 
                 if (plot.locked) {
@@ -858,11 +876,7 @@
                     if (canUnlock) {
                         plotEl.style.cursor = 'pointer';
                         plotEl.style.opacity = '0.7';
-                        plotEl.onclick = () => {
-                            if (confirm(`花费 ${CONFIG.UNLOCK_COST} 金币解锁这块田地？`)) {
-                                unlockPlot(index);
-                            }
-                        };
+                        plotEl.onclick = () => tryUnlockPlot(index);
                     }
                     grid.appendChild(plotEl);
                     return;
@@ -879,6 +893,14 @@
                             ${plot.fertilized ? '✨' : ''}
                         </div>
                         ${isReady ? '<div class="harvest-hint">收获!</div>' : ''}
+                    `;
+                } else if (canPlant) {
+                    const seedInfo = SEEDS[gameState.selectedSeed];
+                    plotEl.innerHTML = `
+                        <div class="plot-icon">🟫</div>
+                        <div class="plot-info" style="color: #FFD700; font-weight: bold;">
+                            点击种植<br>${seedInfo.name}
+                        </div>
                     `;
                 } else {
                     plotEl.innerHTML = `
@@ -929,27 +951,13 @@
 
                 plotEl.appendChild(actionsDiv);
 
-                plotEl.onclick = () => selectPlot(index);
-
-                plotEl.ondragover = (e) => {
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = 'move';
-                    if (!plot.crop && !plot.locked) {
-                        plotEl.classList.add('drag-over');
-                    }
-                };
-
-                plotEl.ondragleave = () => {
-                    plotEl.classList.remove('drag-over');
-                };
-
-                plotEl.ondrop = (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    plotEl.classList.remove('drag-over');
-                    const seedId = e.dataTransfer.getData('text/plain');
-                    if (seedId) {
-                        plantSeed(index, seedId);
+                plotEl.onclick = () => {
+                    if (canPlant) {
+                        plantSeed(index, gameState.selectedSeed);
+                        gameState.selectedSeed = null;
+                        renderField();
+                    } else {
+                        selectPlot(index);
                     }
                 };
 
@@ -1074,6 +1082,7 @@
 
         function updateGameTime() {
             gameState.hour++;
+            gameState.lastHourUpdateTime = performance.now();
 
             if (gameState.hour >= CONFIG.HOURS_PER_DAY) {
                 gameState.hour = 0;
@@ -1120,40 +1129,34 @@
             document.getElementById('dayDisplay').textContent = `第 ${gameState.day} 天`;
             document.getElementById('seasonDisplay').textContent = `季节: ${CONFIG.SEASON_NAMES[gameState.season]}`;
             document.getElementById('moneyDisplay').textContent = gameState.money;
-
-            const progress = (gameState.hour / CONFIG.HOURS_PER_DAY) * 100;
-            animateProgress(progress);
         }
 
-        let currentProgress = 0;
-        let animationFrameId = null;
-
-        function animateProgress(targetProgress) {
-            if (animationFrameId) {
-                cancelAnimationFrame(animationFrameId);
+        function startSmoothProgressLoop() {
+            if (smoothProgressLoopId) {
+                cancelAnimationFrame(smoothProgressLoopId);
             }
 
-            const startProgress = currentProgress;
-            const startTime = performance.now();
-            const duration = 1000;
+            gameState.lastHourUpdateTime = performance.now();
 
-            function animate(currentTime) {
-                const elapsed = currentTime - startTime;
-                const progress = Math.min(elapsed / duration, 1);
+            function updateProgress() {
+                const hourInterval = CONFIG.REAL_SECONDS_PER_GAME_HOUR * 1000 / gameState.timeSpeed;
+                const elapsedSinceHourUpdate = performance.now() - gameState.lastHourUpdateTime;
+                const fraction = Math.min(elapsedSinceHourUpdate / hourInterval, 1);
 
-                const easeInOutCubic = (t) => {
-                    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-                };
+                const totalProgress = ((gameState.hour + fraction) / CONFIG.HOURS_PER_DAY) * 100;
+                document.getElementById('timeProgress').style.width = `${totalProgress}%`;
 
-                currentProgress = startProgress + (targetProgress - startProgress) * easeInOutCubic(progress);
-                document.getElementById('timeProgress').style.width = `${currentProgress}%`;
-
-                if (progress < 1) {
-                    animationFrameId = requestAnimationFrame(animate);
-                }
+                smoothProgressLoopId = requestAnimationFrame(updateProgress);
             }
 
-            animationFrameId = requestAnimationFrame(animate);
+            smoothProgressLoopId = requestAnimationFrame(updateProgress);
+        }
+
+        function stopSmoothProgressLoop() {
+            if (smoothProgressLoopId) {
+                cancelAnimationFrame(smoothProgressLoopId);
+                smoothProgressLoopId = null;
+            }
         }
 
         function startNewGame() {
@@ -1223,6 +1226,16 @@
                 updateGameTime();
                 autoSave();
             }, interval);
+
+            startSmoothProgressLoop();
+        }
+
+        function stopGameLoop() {
+            if (gameState.gameLoopId) {
+                clearInterval(gameState.gameLoopId);
+                gameState.gameLoopId = null;
+            }
+            stopSmoothProgressLoop();
         }
 
         function openBackpack() {
@@ -1275,6 +1288,26 @@
             }
         }
 
+        function selectSeedForPlanting(seedId) {
+            const seedInfo = SEEDS[seedId];
+            if (!seedInfo) return;
+
+            if (seedInfo.season !== gameState.season) {
+                showNotification(`${seedInfo.name} 只能在 ${CONFIG.SEASON_NAMES[seedInfo.season]} 种植！`, 'error');
+                return;
+            }
+
+            if (!gameState.backpack.seeds[seedId] || gameState.backpack.seeds[seedId] <= 0) {
+                showNotification('背包里没有这种种子！', 'error');
+                return;
+            }
+
+            gameState.selectedSeed = seedId;
+            closeBackpack();
+            renderField();
+            showNotification(`已选择 ${seedInfo.name}，点击空地种植！`, 'info');
+        }
+
         function createItemCard(item, quantity, type) {
             const card = document.createElement('div');
             card.className = 'item-card';
@@ -1303,18 +1336,12 @@
                 <div class="item-name">${displayName}</div>
                 ${priceDisplay}
                 <div class="item-quantity">数量: ${quantity}</div>
+                ${type === 'seed' && seasonClass === '' ? '<div style="font-size: 10px; color: #4CAF50; margin-top: 5px;">点击选择种植</div>' : ''}
             `;
 
             if (type === 'seed' && seasonClass === '') {
-                card.draggable = true;
-                card.ondragstart = (e) => {
-                    e.dataTransfer.effectAllowed = 'move';
-                    e.dataTransfer.setData('text/plain', item.id);
-                    card.classList.add('dragging');
-                };
-                card.ondragend = () => {
-                    card.classList.remove('dragging');
-                };
+                card.style.cursor = 'pointer';
+                card.onclick = () => selectSeedForPlanting(item.id);
             } else if (seasonClass !== '') {
                 card.classList.add('disabled');
                 card.title = `该种子只能在 ${CONFIG.SEASON_NAMES[item.season]} 种植`;
