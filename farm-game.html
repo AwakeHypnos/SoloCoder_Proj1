@@ -748,7 +748,6 @@
             warehouse: { seeds: {}, fertilizers: {}, crops: {} },
             field: [],
             selectedPlot: null,
-            selectedSeed: null,
             timeSpeed: 1,
             gameLoopId: null
         };
@@ -861,13 +860,6 @@
         }
 
         function selectPlot(index) {
-            const plot = gameState.field[index];
-            
-            if (gameState.selectedSeed && !plot.crop) {
-                plantSeed(index, gameState.selectedSeed);
-                return;
-            }
-            
             if (gameState.selectedPlot === index) {
                 gameState.selectedPlot = null;
             } else {
@@ -976,9 +968,6 @@
                 growProgress: 0,
                 plantedDay: gameState.day
             };
-
-            gameState.selectedSeed = null;
-            closeBackpack();
 
             showNotification(`种植了 ${seedInfo.name}！`, 'success');
             renderField();
@@ -1168,11 +1157,6 @@
                 seasonBadge = `<span class="item-season season-${item.season}">${CONFIG.SEASON_NAMES[item.season]}</span>`;
             }
 
-            let displayName = item.name;
-            if (type === 'seed') {
-                displayName = item.name + ' 种子';
-            }
-
             let priceDisplay = '';
             if (type === 'seed') {
                 priceDisplay = `<div class="item-price">种子价: ${item.seedPrice} 金币</div>`;
@@ -1182,33 +1166,22 @@
                 priceDisplay = `<div class="item-price">价格: ${item.price} 金币</div>`;
             }
 
-            let selectedClass = '';
-            if (type === 'seed' && gameState.selectedSeed === item.id) {
-                selectedClass = 'selected';
-                card.style.border = '3px solid #FFD700';
-                card.style.boxShadow = '0 0 10px #FFD700';
-            }
-
             card.innerHTML = `
                 ${seasonBadge}
                 <div class="item-icon">${item.icon}</div>
-                <div class="item-name">${displayName}</div>
+                <div class="item-name">${item.name}</div>
                 ${priceDisplay}
                 <div class="item-quantity">数量: ${quantity}</div>
             `;
 
             if (type === 'seed' && seasonClass === '') {
-                card.style.cursor = 'pointer';
-                card.onclick = () => {
-                    if (gameState.selectedSeed === item.id) {
-                        gameState.selectedSeed = null;
-                    } else {
-                        gameState.selectedSeed = item.id;
-                    }
-                    renderBackpack();
-                    if (gameState.selectedSeed) {
-                        showNotification(`已选择 ${item.name} 种子，请点击空地种植`, 'info');
-                    }
+                card.draggable = true;
+                card.ondragstart = (e) => {
+                    e.dataTransfer.setData('text/plain', item.id);
+                    card.classList.add('dragging');
+                };
+                card.ondragend = () => {
+                    card.classList.remove('dragging');
                 };
             } else if (seasonClass !== '') {
                 card.classList.add('disabled');
